@@ -1,0 +1,7 @@
+#compiled go binaries
+github-activity
+*.exe
+*.out
+
+#environment variables
+.env
