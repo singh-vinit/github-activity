@@ -1,21 +1,57 @@
 package main
 
-import (	
+import (
+	"encoding/json"
 	"fmt"
-	"os"
 	"io"
 	"net/http"
-	"encoding/json"
+	"os"
+	"time"
 )
 
 type Repository struct {
 	Name 			string 			`json:"name"`
 }
 
+type Payload struct {
+	Ref 			string 			`json:"ref"`
+	Before 			string 			`json:"before"`
+	Head			string 			`json:"head"`
+}
+
 type Event struct {
 	Type 			string 			`json:"type"`
 	Repo 			Repository 		`json:"repo"`
+	Payload 		Payload 		`json:"payload"`
 	CreatedAt 		string 			`json:"created_at"`
+}
+
+func getCommitCount(repo, before, head string) (int, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/compare/%s...%s", repo, before, head)
+	client := &http.Client{Timeout: 10 * time.Second}
+	response, err := client.Get(url)
+
+	if err != nil {
+		return 0, err
+	}
+
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("compare API returned %s", response.Status)
+	}
+
+	var result struct {
+		TotalCommits int `json:"total_commits"`
+	}
+
+	err = json.NewDecoder(response.Body).Decode(&result)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return result.TotalCommits, nil
 }
 
 func describeEvent(event Event)string {
